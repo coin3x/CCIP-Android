@@ -90,7 +90,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (navigationView.menu.findItem(R.id.fast_pass).isChecked) {
+        if (mDrawerLayout.isDrawerOpen(GravityCompat.START)) {
+            mDrawerLayout.closeDrawers()
+        } else if (navigationView.menu.findItem(R.id.fast_pass).isChecked) {
             super.onBackPressed()
         } else {
             setTitle(R.string.fast_pass)
@@ -125,16 +127,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun jumpToFragment(menuItem: MenuItem): Boolean {
-        menuItem.isChecked = true
-
         when {
-            menuItem.itemId == R.id.star -> mActivity.startActivity(Intent(Intent.ACTION_VIEW, URI_GITHUB))
-            menuItem.itemId == R.id.telegram -> mActivity.startActivity(
-                Intent(
-                    Intent.ACTION_VIEW,
-                    Uri.parse(PreferenceUtil.getCurrentEvent(mActivity).features.telegram)
+            menuItem.itemId == R.id.star -> {
+                mActivity.startActivity(Intent(Intent.ACTION_VIEW, URI_GITHUB))
+                mDrawerLayout.closeDrawers()
+                return false
+            }
+            menuItem.itemId == R.id.telegram -> {
+                mActivity.startActivity(
+                    Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse(PreferenceUtil.getCurrentEvent(mActivity).features.telegram)
+                    )
                 )
-            )
+                mDrawerLayout.closeDrawers()
+                return false
+            }
             else -> {
                 val fragment = when (menuItem.itemId) {
                     R.id.fast_pass -> MainFragment()
