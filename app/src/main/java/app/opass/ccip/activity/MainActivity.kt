@@ -17,10 +17,12 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.transaction
 import app.opass.ccip.R
 import app.opass.ccip.fragment.*
+import app.opass.ccip.util.LocaleUtil
 import app.opass.ccip.util.PreferenceUtil
 import com.google.android.material.navigation.NavigationView
 import com.google.zxing.integration.android.IntentIntegrator
 import com.squareup.picasso.Picasso
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
     companion object {
@@ -32,6 +34,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var drawerToggle: ActionBarDrawerToggle
     private lateinit var mActivity: Activity
     private lateinit var confLogoImageView: ImageView
+    private lateinit var eventNameTextView: TextView
     private lateinit var userTitleTextView: TextView
     private lateinit var userIdTextView: TextView
 
@@ -44,6 +47,7 @@ class MainActivity : AppCompatActivity() {
         mDrawerLayout = findViewById(R.id.drawer_layout)
         navigationView = findViewById(R.id.nav_view)
         confLogoImageView = navigationView.getHeaderView(0).findViewById(R.id.conf_logo)
+        eventNameTextView = navigationView.getHeaderView(0).findViewById(R.id.event_name)
         userTitleTextView = navigationView.getHeaderView(0).findViewById(R.id.user_title)
         userIdTextView = navigationView.getHeaderView(0).findViewById(R.id.user_id)
 
@@ -65,7 +69,15 @@ class MainActivity : AppCompatActivity() {
             mActivity.startActivity(intent)
             mActivity.finish()
         } else {
-            Picasso.get().load(PreferenceUtil.getCurrentEvent(mActivity).logoUrl).into(confLogoImageView)
+            val currentEvent = PreferenceUtil.getCurrentEvent(mActivity)
+
+            eventNameTextView.text =
+                if (LocaleUtil.getCurrentLocale(mActivity).language == Locale("zh").language) {
+                    currentEvent.displayName.zh
+                } else {
+                    currentEvent.displayName.en
+                }
+            Picasso.get().load(currentEvent.logoUrl).into(confLogoImageView)
         }
     }
 
@@ -119,6 +131,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun setUserId(userId: String) {
+        userIdTextView.visibility = View.VISIBLE
         userIdTextView.text = userId
     }
 
