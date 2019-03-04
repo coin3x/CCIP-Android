@@ -17,6 +17,7 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.transaction
 import app.opass.ccip.R
 import app.opass.ccip.fragment.*
+import app.opass.ccip.network.CCIPClient
 import app.opass.ccip.util.LocaleUtil
 import app.opass.ccip.util.PreferenceUtil
 import com.google.android.material.navigation.NavigationView
@@ -63,22 +64,25 @@ class MainActivity : AppCompatActivity() {
             replace(R.id.content_frame, MainFragment())
         }
 
-        if (PreferenceUtil.getCurrentEvent(applicationContext).displayName == null) {
+        val currentEvent = PreferenceUtil.getCurrentEvent(mActivity)
+
+        if (currentEvent.eventId == "") {
             val intent = Intent()
             intent.setClass(mActivity, EventActivity::class.java)
             mActivity.startActivity(intent)
             mActivity.finish()
-        } else {
-            val currentEvent = PreferenceUtil.getCurrentEvent(mActivity)
-
-            eventNameTextView.text =
-                if (LocaleUtil.getCurrentLocale(mActivity).language == Locale("zh").language) {
-                    currentEvent.displayName.zh
-                } else {
-                    currentEvent.displayName.en
-                }
-            Picasso.get().load(currentEvent.logoUrl).into(confLogoImageView)
+            return
         }
+
+        CCIPClient.setBaseUrl(currentEvent.serverBaseUrl)
+
+        eventNameTextView.text =
+            if (LocaleUtil.getCurrentLocale(mActivity).language == Locale("zh").language) {
+                currentEvent.displayName.zh
+            } else {
+                currentEvent.displayName.en
+            }
+        Picasso.get().load(currentEvent.logoUrl).into(confLogoImageView)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
