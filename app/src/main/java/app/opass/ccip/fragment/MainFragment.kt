@@ -1,11 +1,13 @@
 package app.opass.ccip.fragment
 
+import android.annotation.SuppressLint
 import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
@@ -40,6 +42,7 @@ class MainFragment : Fragment() {
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
     private lateinit var mActivity: MainActivity
 
+    @SuppressLint("InflateParams")
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         super.onCreate(savedInstanceState)
         val view = inflater.inflate(R.layout.fragment_main, container, false)
@@ -52,7 +55,7 @@ class MainFragment : Fragment() {
 
         val enterTokenButton: View = view.findViewById(R.id.enter_token)
 
-        enterTokenButton.setOnClickListener(View.OnClickListener {
+        enterTokenButton.setOnClickListener {
             val dialogView = layoutInflater.inflate(R.layout.dialog_enter_token, null)
             val tokenInputLayout: TextInputLayout = dialogView.findViewById(R.id.token_input_layout)
             val tokenInput: TextInputEditText = dialogView.findViewById(R.id.token_input)
@@ -68,12 +71,12 @@ class MainFragment : Fragment() {
                 val positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE)
                 val negativeButton = dialog.getButton(DialogInterface.BUTTON_NEGATIVE)
 
-                positiveButton.setOnClickListener(View.OnClickListener {
+                positiveButton.setOnClickListener(View.OnClickListener posBtn@{
                     val token = tokenInput.text.toString().trim()
 
                     if (token == "") {
                         tokenInputLayout.error = getString(R.string.token_required)
-                        return@OnClickListener
+                        return@posBtn
                     }
                     PreferenceUtil.setIsNewToken(mActivity, true)
                     PreferenceUtil.setToken(mActivity, token)
@@ -81,10 +84,12 @@ class MainFragment : Fragment() {
                     updateStatus()
                 })
                 negativeButton.setOnClickListener { dialog.dismiss() }
-            }
 
+                tokenInput.requestFocus()
+            }
             dialog.show()
-        })
+            dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+        }
 
         loginTitle.setOnClickListener {
             val integrator = IntentIntegrator(mActivity)
@@ -136,8 +141,8 @@ class MainFragment : Fragment() {
         noNetworkView.visibility = View.GONE
         notConfWifiView.visibility = View.GONE
 
-        val attendee = CCIPClient.get().status(PreferenceUtil.getToken(mActivity))
-        attendee.enqueue(object : Callback<Attendee> {
+        val getAttendeeCall = CCIPClient.get().status(PreferenceUtil.getToken(mActivity))
+        getAttendeeCall.enqueue(object : Callback<Attendee> {
             override fun onResponse(call: Call<Attendee>, response: Response<Attendee>) {
                 swipeRefreshLayout.isRefreshing = false
                 when {
