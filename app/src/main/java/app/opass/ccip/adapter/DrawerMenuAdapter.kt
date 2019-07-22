@@ -25,10 +25,17 @@ private const val URL_GITHUB = "https://github.com/CCIP-App/CCIP-Android"
 class DrawerMenuAdapter(
     private val context: Context,
     private val features: List<Feature>,
-    private val onItemClick: (Any) -> Unit
+    private val onItemClick: (Any) -> Unit,
+    _isSignedIn: Boolean
 ) : RecyclerView.Adapter<DrawerMenuViewHolder>() {
     private val differ = AsyncListDiffer(this, DiffCallback)
 
+    var isSignedIn: Boolean = _isSignedIn
+        set(value) {
+            if (field == value) return
+            field = value
+            differ.submitList(buildMergedList())
+        }
     var shouldShowIdentities: Boolean = false
         set(value) {
             field = value
@@ -103,6 +110,7 @@ class DrawerMenuAdapter(
     private fun buildMergedList(): List<Any> {
         val merged = mutableListOf<Any>(PlaceholderItem)
         if (shouldShowIdentities) {
+            if (!isSignedIn) merged.add(IdentityAction.SIGN_IN)
             merged.addAll(arrayOf(IdentityAction.SWITCH_EVENT, DividerItem))
         }
         merged.addAll(features.map(FeatureItem.Companion::fromFeature))
@@ -121,11 +129,13 @@ class DrawerMenuAdapter(
     private fun getTitleByAction(action: IdentityAction): String {
         return when (action) {
             IdentityAction.SWITCH_EVENT -> context.resources.getString(R.string.switch_event)
+            IdentityAction.SIGN_IN -> context.resources.getString(R.string.sign_in)
         }
     }
 
     private fun getIconByAction(action: IdentityAction): Int = when (action) {
         IdentityAction.SWITCH_EVENT -> R.drawable.ic_swap_horiz_black_24dp
+        IdentityAction.SIGN_IN -> R.drawable.ic_add_black_24dp
     }
 
     private fun getDrawable(id: Int?): Drawable? {
@@ -180,6 +190,7 @@ object DiffCallback : DiffUtil.ItemCallback<Any>() {
         return when {
             oldItem is IdentityAction && newItem is IdentityAction -> oldItem == newItem
             oldItem is DrawerMenuAdapter.FeatureItem && newItem is DrawerMenuAdapter.FeatureItem -> oldItem == newItem
+            /* old item is Identity && newItem is Identity -> oldItem == newItem */
             oldItem is PlaceholderItem && newItem is PlaceholderItem -> true
             oldItem is DividerItem && newItem is DividerItem -> true
             else -> false
@@ -191,6 +202,7 @@ object DiffCallback : DiffUtil.ItemCallback<Any>() {
         return when {
             oldItem is IdentityAction && newItem is IdentityAction -> oldItem == newItem
             oldItem is DrawerMenuAdapter.FeatureItem && newItem is DrawerMenuAdapter.FeatureItem -> oldItem == newItem
+            /* oldItem is Identity && newItem is Identity -> oldItem == newItem */
             else -> true
         }
     }
@@ -200,7 +212,8 @@ object PlaceholderItem
 object DividerItem
 
 enum class IdentityAction {
-    SWITCH_EVENT
+    SWITCH_EVENT,
+    SIGN_IN
 }
 
 sealed class DrawerMenuViewHolder(view: View) : RecyclerView.ViewHolder(view) {

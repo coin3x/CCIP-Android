@@ -164,6 +164,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        val isSignedIn = PreferenceUtil.getToken(this) != null
+        drawerMenuAdapter.isSignedIn = isSignedIn
+    }
+
     fun setUserTitle(userTitle: String) {
         userTitleTextView.visibility = View.VISIBLE
         userTitleTextView.text = userTitle
@@ -180,7 +186,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupDrawerContent(event: EventConfig) {
-        drawerMenuAdapter = DrawerMenuAdapter(this, event.features, ::onDrawerItemClick)
+        val isSignedIn = PreferenceUtil.getToken(this) != null
+        drawerMenuAdapter = DrawerMenuAdapter(this, event.features, ::onDrawerItemClick, isSignedIn)
         drawerMenu.adapter = drawerMenuAdapter
         drawerMenu.layoutManager = LinearLayoutManager(this)
         navigationView.getHeaderView(0).findViewById<RelativeLayout>(R.id.nav_header_info)
@@ -200,6 +207,9 @@ class MainActivity : AppCompatActivity() {
                 this.startActivity(Intent(this, EventActivity::class.java))
                 finish()
             }
+            IdentityAction.SIGN_IN -> {
+                this.startActivity(Intent(this, AuthActivity::class.java))
+            }
             is DrawerMenuAdapter.FeatureItem -> {
                 if (!item.isEmbedded) return this.startActivity(Intent(Intent.ACTION_VIEW, item.url!!.toUri()))
 
@@ -212,7 +222,7 @@ class MainActivity : AppCompatActivity() {
                     FeatureType.PUZZLE -> if (item.url != null) PuzzleFragment.newInstance(item.url) else return
                     else -> WebViewFragment.newInstance(
                         item.url!!
-                            .replace("{token}", PreferenceUtil.getToken(mActivity).toString())!!,
+                            .replace("{token}", PreferenceUtil.getToken(mActivity).toString()),
                         item.shouldUseBuiltinZoomControls
                     )
                 }
@@ -221,6 +231,7 @@ class MainActivity : AppCompatActivity() {
         }
         title = when (item) {
             is DrawerMenuAdapter.FeatureItem -> item.displayText.findBestMatch(this)
+            is IdentityAction -> title // noop
             else -> this.resources.getString(R.string.app_name)
         }
         mDrawerLayout.closeDrawers()

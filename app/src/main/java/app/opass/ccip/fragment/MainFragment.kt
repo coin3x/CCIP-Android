@@ -1,6 +1,5 @@
 package app.opass.ccip.fragment
 
-import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -15,7 +14,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import app.opass.ccip.R
-import app.opass.ccip.activity.CaptureActivity
 import app.opass.ccip.activity.CountdownActivity
 import app.opass.ccip.activity.MainActivity
 import app.opass.ccip.adapter.ScenarioAdapter
@@ -26,16 +24,10 @@ import app.opass.ccip.network.ErrorUtil
 import app.opass.ccip.util.JsonUtil
 import app.opass.ccip.util.PreferenceUtil
 import com.google.android.material.snackbar.Snackbar
-import com.google.android.material.textfield.TextInputEditText
-import com.google.android.material.textfield.TextInputLayout
-import com.google.zxing.integration.android.IntentIntegrator
-import com.onesignal.OneSignal
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import org.json.JSONException
-import org.json.JSONObject
 import kotlin.coroutines.CoroutineContext
 
 class MainFragment : Fragment(), CoroutineScope {
@@ -62,7 +54,7 @@ class MainFragment : Fragment(), CoroutineScope {
         loginTitle = view.findViewById(R.id.login_title)
         mJob = Job()
 
-        val enterTokenButton: View = view.findViewById(R.id.enter_token)
+        /*val enterTokenButton: View = view.findViewById(R.id.enter_token)
 
         enterTokenButton.setOnClickListener(View.OnClickListener {
             val dialogView = layoutInflater.inflate(R.layout.dialog_enter_token, null)
@@ -96,17 +88,17 @@ class MainFragment : Fragment(), CoroutineScope {
             }
 
             dialog.show()
-        })
+        })*/
 
         loginTitle.setOnClickListener {
-            val integrator = IntentIntegrator(mActivity)
+            /*val integrator = IntentIntegrator(mActivity)
             integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE)
             integrator.setPrompt(getString(R.string.scan_ticket_qrcode))
             integrator.setCameraId(0)
             integrator.setBeepEnabled(false)
             integrator.setBarcodeImageEnabled(false)
             integrator.captureActivity = CaptureActivity::class.java
-            integrator.initiateScan()
+            integrator.initiateScan()*/
         }
 
         noNetworkView.setOnClickListener {
@@ -160,7 +152,7 @@ class MainFragment : Fragment(), CoroutineScope {
                         val attendee = response.body()
                         val attr = attendee!!.attr.asJsonObject
 
-                        if (PreferenceUtil.getIsNewToken(mActivity)) {
+                        /*if (PreferenceUtil.getIsNewToken(mActivity)) {
                             PreferenceUtil.setIsNewToken(mActivity, false)
 
                             val tags = JSONObject()
@@ -182,7 +174,7 @@ class MainFragment : Fragment(), CoroutineScope {
                                 )
                                 .setPositiveButton(android.R.string.ok, null)
                                 .show()
-                        }
+                        }*/
 
                         attr.get("title")?.let {
                             mActivity.setUserTitle(it.asString)
