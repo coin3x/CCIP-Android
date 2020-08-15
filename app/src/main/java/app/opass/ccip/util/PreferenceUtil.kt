@@ -16,6 +16,7 @@ object PreferenceUtil {
     private const val PREF_SCHEDULE = "schedule"
     private const val PREF_SCHEDULE_SCHEDULE = "schedule"
     private const val PREF_SCHEDULE_STARS = "stars"
+    private const val PREF_SCHEDULE_REGISTERED = "registered"
 
     fun setCurrentEvent(context: Context, eventConfig: EventConfig) {
         context.getSharedPreferences(PREF_EVENT, Context.MODE_PRIVATE)
@@ -89,4 +90,13 @@ object PreferenceUtil {
             emptyList<String>().also { saveStarredIds(context, it) }
         }
     }
+
+    fun saveRegisteredIds(ctx: Context, registeredSessionIds: Set<String>) {
+        ctx.getSharedPreferences(PREF_SCHEDULE_STARS, Context.MODE_PRIVATE)
+            .edit { putStringSet(getCurrentEvent(ctx).eventId + getToken(ctx) + PREF_SCHEDULE_REGISTERED, registeredSessionIds.toSet()) }
+    }
+
+    fun getRegisteredIds(ctx: Context) : Set<String>? =
+        ctx.getSharedPreferences(PREF_SCHEDULE_STARS, Context.MODE_PRIVATE)
+            .getStringSet(getCurrentEvent(ctx).eventId + getToken(ctx) + PREF_SCHEDULE_REGISTERED, null)
 }

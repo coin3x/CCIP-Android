@@ -2,6 +2,7 @@ package app.opass.ccip.ui.schedule
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -25,13 +26,13 @@ import java.text.SimpleDateFormat
 
 private val SDF = SimpleDateFormat("HH:mm")
 private const val FORMAT_ENDTIME = "~ %s, %d%s"
+private const val KEY_STARRED = "starred"
 
 class ScheduleAdapter(
     private val mContext: Context,
     private val tagViewPool: RecyclerView.RecycledViewPool,
     private val onSessionClicked: (Session) -> Unit,
-    private val onToggleStarState: (Session) -> Boolean,
-    private val isSessionStarred: (Session) -> Boolean
+    private val onToggleStarState: (Session) -> Unit
 ) : RecyclerView.Adapter<ScheduleViewHolder>() {
     private val differ = AsyncListDiffer(this, ScheduleDiffCallback)
 
@@ -64,16 +65,17 @@ class ScheduleAdapter(
                 holder.startTime.text = SDF.format(date)
             }
             is ScheduleViewHolder.SessionViewHolder -> {
+                val (session, isStarred) = item as SessionItem
                 val binding = holder.binding
-                updateStarState(binding.star, isSessionStarred(item as Session))
+                updateStarState(binding.star, isStarred)
 
-                val detail = item.getSessionDetail(mContext)
+                val detail = session.getSessionDetail(mContext)
                 if (detail.description.isNotEmpty()) {
                     binding.card.setOnClickListener {
-                        onSessionClicked(item)
+                        onSessionClicked(session)
                     }
                     binding.star.setOnClickListener {
-                        updateStarState(it as ImageView, onToggleStarState(item))
+                        onToggleStarState(session)
                     }
                     binding.star.isGone = false
                 } else {
@@ -82,13 +84,13 @@ class ScheduleAdapter(
                     binding.star.isGone = true
                 }
 
-                binding.room.text = item.room.getDetails(mContext).name
-                binding.title.text = item.getSessionDetail(mContext).title
-                binding.type.text = item.type?.getDetails(mContext)?.name ?: ""
+                binding.room.text = session.room.getDetails(mContext).name
+                binding.title.text = detail.title
+                binding.type.text = session.type?.getDetails(mContext)?.name ?: ""
 
                 try {
-                    val startDate = ISO8601Utils.parse(item.start, ParsePosition(0))
-                    val endDate = ISO8601Utils.parse(item.end, ParsePosition(0))
+                    val startDate = ISO8601Utils.parse(session.start, ParsePosition(0))
+                    val endDate = ISO8601Utils.parse(session.end, ParsePosition(0))
                     binding.endTime.text = String.format(
                         FORMAT_ENDTIME, SDF.format(endDate),
                         (endDate.time - startDate.time) / 1000 / 60,
@@ -97,25 +99,40 @@ class ScheduleAdapter(
                 } catch (e: ParseException) {
                     e.printStackTrace()
                 }
-                binding.tags.isVisible = item.tags.isNotEmpty()
-                (binding.tags.adapter as SessionTagAdapter).submitList(item.tags)
+                binding.tags.isVisible = session.tags.isNotEmpty()
+                (binding.tags.adapter as SessionTagAdapter).submitList(session.tags)
             }
         }
+    }
+
+    override fun onBindViewHolder(
+        holder: ScheduleViewHolder,
+        position: Int,
+        payloads: MutableList<Any>
+    ) {
+        if (payloads.isNotEmpty()) {
+            (payloads[0] as? Bundle)?.let {
+                val starred = it.getBoolean(KEY_STARRED)
+                val binding = (holder as ScheduleViewHolder.SessionViewHolder).binding
+                updateStarState(binding.star, starred)
+            }
+        }
+        super.onBindViewHolder(holder, position, payloads)
     }
 
     override fun getItemCount() = differ.currentList.size
 
     override fun getItemViewType(position: Int): Int {
         return when (differ.currentList[position]) {
-            is Session -> R.layout.item_session
+            is SessionItem -> R.layout.item_session
             is String -> R.layout.item_start_time
             else -> throw IllegalStateException("Unknown item type at position $position")
         }
     }
 
-    fun update(sessionSlotList: List<List<Session>>) {
+    fun update(sessionSlotList: List<List<SessionItem>>) {
         val list = sessionSlotList.map {
-            mutableListOf<Any>(it[0].start!!).apply { addAll(it) }
+            mutableListOf<Any>(it[0].inner.start!!).apply { addAll(it) }
         }.flatten()
         differ.submitList(list)
     }
@@ -130,6 +147,8 @@ class ScheduleAdapter(
         }
     }
 }
+
+data class SessionItem(val inner: Session, val isStarred: Boolean)
 
 class SessionTagViewHolder(val tag: TextView) : RecyclerView.ViewHolder(tag)
 
@@ -175,7 +194,7 @@ sealed class ScheduleViewHolder(view: View) : RecyclerView.ViewHolder(view) {
 object ScheduleDiffCallback : DiffUtil.ItemCallback<Any>() {
     override fun areItemsTheSame(oldItem: Any, newItem: Any): Boolean {
         return when {
-            (oldItem is Session && newItem is Session) -> oldItem.id == newItem.id
+            (oldItem is SessionItem && newItem is SessionItem) -> oldItem.inner.id == newItem.inner.id
             (oldItem is String && newItem is String) -> oldItem == newItem
             else -> false
         }
@@ -184,10 +203,20 @@ object ScheduleDiffCallback : DiffUtil.ItemCallback<Any>() {
     @SuppressLint("DiffUtilEquals")
     override fun areContentsTheSame(oldItem: Any, newItem: Any): Boolean {
         return when {
-            (oldItem is Session && newItem is Session) -> oldItem == newItem
+            (oldItem is SessionItem && newItem is SessionItem) -> oldItem == newItem
             (oldItem is String && newItem is String) -> oldItem == newItem
             else -> false
         }
     }
 
+    override fun getChangePayload(oldItem: Any, newItem: Any): Any? {
+        if (oldItem is SessionItem && newItem is SessionItem) {
+            if (oldItem.inner == newItem.inner && oldItem.isStarred != newItem.isStarred) {
+                return Bundle().apply {
+                    putBoolean(KEY_STARRED, newItem.isStarred)
+                }
+            }
+        }
+        return null
+    }
 }

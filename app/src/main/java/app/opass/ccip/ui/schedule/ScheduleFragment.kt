@@ -57,8 +57,7 @@ class ScheduleFragment : Fragment() {
             mActivity,
             tagViewPool,
             ::onSessionClicked,
-            ::onToggleStarState,
-            ::isSessionStarred
+            ::onToggleStarState
         )
         scheduleView.adapter = adapter
 
@@ -101,7 +100,9 @@ class ScheduleFragment : Fragment() {
         startActivity(intent)
     }
 
-    private fun onToggleStarState(session: Session): Boolean {
+    private fun onToggleStarState(session: Session) {
+        if (vm.registeredSessionIds.value!!.contains(session.id)) return
+
         val sessionIds = PreferenceUtil.loadStarredIds(mActivity).toMutableList()
         val isAlreadyStarred = sessionIds.contains(session.id)
         if (isAlreadyStarred) {
@@ -112,25 +113,15 @@ class ScheduleFragment : Fragment() {
             AlarmUtil.setSessionAlarm(mActivity, session)
         }
         PreferenceUtil.saveStarredIds(mActivity, sessionIds)
-        return !isAlreadyStarred
+        vm.reloadStars()
     }
 
-    private fun isSessionStarred(session: Session): Boolean {
-        return PreferenceUtil.loadStarredIds(mActivity).contains(session.id)
-    }
-
-    private fun toSessionsGroupedByTime(sessions: List<Session>): List<List<Session>> {
+    private fun toSessionsGroupedByTime(sessions: List<SessionItem>): List<List<SessionItem>> {
         return sessions
-            .filter { it.start != null }
-            .groupBy { it.start }
+            .filter { it.inner.start != null }
+            .groupBy { it.inner.start }
             .values
-            .sortedBy { it[0].start }
-            .map { it.sortedWith(Comparator { (_, room1), (_, room2) -> room1.id.compareTo(room2.id) }) }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        // Force RV to reload star state :(
-        adapter.notifyDataSetChanged()
+            .sortedBy { it[0].inner.start }
+            .map { it.sortedWith(Comparator { (session1, _), (session2, _) -> session1.room.id.compareTo(session2.room.id) }) }
     }
 }

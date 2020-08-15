@@ -17,6 +17,7 @@ import app.opass.ccip.R
 import app.opass.ccip.databinding.FragmentScheduleTabBinding
 import app.opass.ccip.extension.*
 import app.opass.ccip.model.ConfSchedule
+import app.opass.ccip.network.CCIPClient
 import app.opass.ccip.ui.MainActivity
 import app.opass.ccip.util.JsonUtil
 import app.opass.ccip.util.PreferenceUtil
@@ -191,6 +192,22 @@ class ScheduleTabFragment : Fragment(), CoroutineScope, MainActivity.BackPressAw
                     .setAnchorView(binding.fab)
                     .show()
             }
+            userScheduleUrl?.let { baseUrl ->
+                val token = PreferenceUtil.getToken(mActivity) ?: return@let
+                try {
+                    val client = CCIPClient.withBaseUrl(baseUrl)
+                    val (registeredSessionIds) = client.userSchedule(token)
+                    val oldIds = PreferenceUtil.getRegisteredIds(mActivity)
+                    if (oldIds != registeredSessionIds) {
+                        PreferenceUtil.saveRegisteredIds(mActivity, registeredSessionIds)
+                        vm.reloadRegisteredSessions()
+                    }
+                } catch (_: CancellationException) {
+                    return@launch
+                } catch (t: Throwable) {
+                    t.printStackTrace()
+                }
+            }
             binding.swipeContainer.isRefreshing = false
         }
     }
@@ -232,6 +249,11 @@ class ScheduleTabFragment : Fragment(), CoroutineScope, MainActivity.BackPressAw
             return true
         }
         return false
+    }
+
+    override fun onResume() {
+        super.onResume()
+        vm.reloadStars()
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {

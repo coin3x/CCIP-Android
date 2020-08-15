@@ -37,6 +37,7 @@ private const val KEY_SHOW_SEARCH_PANEL = "showSearchPanel"
 
 class ScheduleViewModel(application: Application, stateHandle: SavedStateHandle) : AndroidViewModel(application) {
     val schedule: MutableLiveData<ConfSchedule?> = MutableLiveData(null)
+    val registeredSessionIds: MutableLiveData<Set<String>> = MutableLiveData(emptySet())
     val sessionsGroupedByDate: LiveData<Map<String, List<Session>>?> = schedule.switchMap { schedule ->
         liveData(viewModelScope.coroutineContext + Dispatchers.Default) {
             emit(schedule?.sessions?.groupedByDate())
@@ -51,39 +52,45 @@ class ScheduleViewModel(application: Application, stateHandle: SavedStateHandle)
     private val searchTerm: MutableLiveData<String> = MutableLiveData("")
     private val filterConfig: LiveData<FilterConfig> = MediatorLiveData<FilterConfig>().apply {
         val update = {
-            value = FilterConfig(sessionsGroupedByDate.value, showStarredOnly.value!!, selectedTagIds.value!!, searchTerm.value!!)
+            value = FilterConfig(sessionsGroupedByDate.value, showStarredOnly.value!!, selectedTagIds.value!!, searchTerm.value!!, registeredSessionIds.value!!)
         }
         addSource(sessionsGroupedByDate) { update() }
         addSource(showStarredOnly) { update() }
         addSource(selectedTagIds) { update() }
         addSource(searchTerm) { update() }
+        addSource(registeredSessionIds) { update() }
     }.debounce(100)
-    val groupedSessionsToShow: LiveData<Map<String, List<Session>>?> = filterConfig.switchMap { (sessions, starredOnly, selectedTagIds, searchText) ->
+    val groupedSessionsToShow: LiveData<Map<String, List<SessionItem>>?> = filterConfig.switchMap { (sessions, starredOnly, selectedTagIds, searchText, registeredIds) ->
         liveData(viewModelScope.coroutineContext + Dispatchers.Default) {
             if (sessions == null) {
                 emit(null)
                 return@liveData
             }
-            val filtered = if (starredOnly) sessions.let(::filterStarred) else sessions
-            val result = if (selectedTagIds.isNotEmpty()) {
-                filtered.mapValues { (_, sessions) ->
-                    sessions.filter { session -> session.tags.any { tag -> selectedTagIds.any { id -> id == tag.id } } }
-                }
-            } else filtered
+            val starred = PreferenceUtil.loadStarredIds(getApplication())
+            val combinedIds = starred + registeredIds
+            val items = sessions.mapValues { (_, sessions) ->
+                sessions.map { session -> SessionItem(session, combinedIds.contains(session.id)) }
+            }
 
+            var filtered = if (starredOnly) {
+                items.mapValues { (_, items) -> items.filter(SessionItem::isStarred) }
+            } else items
+            if (selectedTagIds.isNotEmpty()) {
+                filtered = filtered.mapValues { (_, items) ->
+                    items.filter { (session, _) -> session.tags.any { tag -> selectedTagIds.any { id -> id == tag.id } } }
+                }
+            }
             if (hasSearchTerm()) {
-                val searchResult = result.mapValues { (_, sessions) ->
-                    sessions.filter { session ->
+                filtered = filtered.mapValues { (_, items) ->
+                    items.filter { (session, _) ->
                         session.en.description.contains(searchText, ignoreCase = true) ||
                             session.en.title.contains(searchText, ignoreCase = true) ||
                             session.zh.description.contains(searchText, ignoreCase = true) ||
                             session.zh.title.contains(searchText, ignoreCase = true)
                     }
                 }
-                emit(searchResult)
-            } else {
-                emit(result)
             }
+            emit(filtered)
         }
     }
     val isScheduleReady: LiveData<Boolean> = groupedSessionsToShow.map { sessions -> sessions != null }
@@ -113,6 +120,7 @@ class ScheduleViewModel(application: Application, stateHandle: SavedStateHandle)
     init {
         viewModelScope.launch {
             schedule.value = getSchedule()
+            reloadRegisteredSessions()
         }
     }
 
@@ -129,6 +137,16 @@ class ScheduleViewModel(application: Application, stateHandle: SavedStateHandle)
             val validTagIds = tags.value?.map { tag -> tag.id } ?: return@launch
             selectedTagIds.value = selectedTagIds.value!!.filter { id -> validTagIds.contains(id) }
         }
+    }
+
+    suspend fun reloadRegisteredSessions() {
+        val ids = withContext(Dispatchers.Default) { PreferenceUtil.getRegisteredIds(getApplication()) }
+        registeredSessionIds.value = ids.orEmpty()
+    }
+
+    fun reloadStars() {
+        // Trigger filterConfig observer
+        showStarredOnly.value = showStarredOnly.value
     }
 
     fun clearFilter() {
@@ -156,17 +174,12 @@ class ScheduleViewModel(application: Application, stateHandle: SavedStateHandle)
         shouldShowSearchPanel.value = show
     }
 
-    private fun filterStarred(sessions: Map<String, List<Session>>): Map<String, List<Session>> {
-        val starredIds = PreferenceUtil.loadStarredIds(getApplication())
-        return sessions.mapValues { (_, sessions) ->
-            sessions.filter { s-> starredIds.contains(s.id) }
-        }
-    }
 }
 
 private data class FilterConfig(
     val sessions: Map<String, List<Session>>?,
     val showStarredOnly: Boolean,
     val selectedFilterIds: List<String>,
-    val searchTerm: String
+    val searchTerm: String,
+    val registeredSessionIds: Set<String>
 )

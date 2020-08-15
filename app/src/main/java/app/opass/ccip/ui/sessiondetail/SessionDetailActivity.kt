@@ -48,6 +48,7 @@ class SessionDetailActivity : AppCompatActivity() {
     private lateinit var collapsingToolbarLayout: CollapsingToolbarLayout
     private lateinit var speakerInfo: TextView
     private var isStar = false
+    private var isRegistered = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,6 +61,7 @@ class SessionDetailActivity : AppCompatActivity() {
             it.id == intent.getStringExtra(INTENT_EXTRA_SESSION_ID)
         } ?: return showToastAndFinish()
         isStar = PreferenceUtil.loadStarredIds(this).contains(session.id)
+        isRegistered = PreferenceUtil.getRegisteredIds(this)?.contains(session.id) == true
 
         collapsingToolbarLayout = findViewById(R.id.toolbar_layout)
         val toolbar: Toolbar = findViewById(R.id.toolbar)
@@ -171,7 +173,7 @@ class SessionDetailActivity : AppCompatActivity() {
     }
 
     private fun checkFabIcon() {
-        if (isStar) {
+        if (isStar || isRegistered) {
             fab.setImageResource(R.drawable.ic_bookmark_black_24dp)
         } else {
             fab.setImageResource(R.drawable.ic_bookmark_border_black_24dp)
@@ -180,6 +182,7 @@ class SessionDetailActivity : AppCompatActivity() {
     }
 
     private fun toggleFab(view: View) {
+        if (isRegistered) return
         isStar = !isStar
         updateStarSessions(view)
         checkFabIcon()
