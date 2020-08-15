@@ -19,14 +19,17 @@ import app.opass.ccip.extension.*
 import app.opass.ccip.model.ConfSchedule
 import app.opass.ccip.network.CCIPClient
 import app.opass.ccip.ui.MainActivity
+import app.opass.ccip.util.AlarmUtil
 import app.opass.ccip.util.JsonUtil
 import app.opass.ccip.util.PreferenceUtil
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.tabs.TabLayout
+import com.google.gson.internal.bind.util.ISO8601Utils
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.text.ParsePosition
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.coroutines.CoroutineContext
@@ -197,10 +200,22 @@ class ScheduleTabFragment : Fragment(), CoroutineScope, MainActivity.BackPressAw
                 try {
                     val client = CCIPClient.withBaseUrl(baseUrl)
                     val (registeredSessionIds) = client.userSchedule(token)
-                    val oldIds = PreferenceUtil.getRegisteredIds(mActivity)
+                    val oldIds = PreferenceUtil.getRegisteredIds(mActivity).orEmpty()
                     if (oldIds != registeredSessionIds) {
                         PreferenceUtil.saveRegisteredIds(mActivity, registeredSessionIds)
                         vm.reloadRegisteredSessions()
+                    }
+                    withContext(Dispatchers.Default) {
+                        val sessions = PreferenceUtil.loadSchedule(mActivity)?.sessions ?: return@withContext
+
+                        // Re-register every time lest the schedule fail to load, which prevents
+                        // the alarm from being set.
+                        val previouslyRegistered = sessions.filter { (id) -> oldIds.contains(id) }
+                        val currentlyRegistered = sessions.filter { (id) -> registeredSessionIds.contains(id) }
+                        previouslyRegistered.forEach { AlarmUtil.cancelSessionAlarm(mActivity, it) }
+                        currentlyRegistered
+                            .filter { session -> ISO8601Utils.parse(session.start!!, ParsePosition(0)).time > Date().time }
+                            .forEach { AlarmUtil.setSessionAlarm(mActivity, it) }
                     }
                 } catch (_: CancellationException) {
                     return@launch
