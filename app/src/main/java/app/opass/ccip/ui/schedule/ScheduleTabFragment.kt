@@ -34,8 +34,12 @@ class ScheduleTabFragment : Fragment(), CoroutineScope, MainActivity.BackPressAw
     companion object {
         private val SDF_DATE = SimpleDateFormat("MM/dd", Locale.US)
         private const val EXTRA_URL = "EXTRA_URL"
-        fun newInstance(url: String) : ScheduleTabFragment = ScheduleTabFragment().apply {
-            arguments = Bundle().apply { putString(EXTRA_URL, url) }
+        private const val EXTRA_REMOTE_USER_SCHEDULE_URL = "remoteUserScheduleUrl"
+        fun newInstance(url: String, remoteUserScheduleUrl: String? = null) : ScheduleTabFragment = ScheduleTabFragment().apply {
+            arguments = Bundle().apply {
+                putString(EXTRA_URL, url)
+                putString(EXTRA_REMOTE_USER_SCHEDULE_URL, remoteUserScheduleUrl)
+            }
         }
     }
 
@@ -51,6 +55,7 @@ class ScheduleTabFragment : Fragment(), CoroutineScope, MainActivity.BackPressAw
         get() = mJob + Dispatchers.Main
 
     private val scheduleUrl by lazy { requireArguments().getString(EXTRA_URL)!! }
+    private val userScheduleUrl by lazy { requireArguments().getString(EXTRA_REMOTE_USER_SCHEDULE_URL) }
     private val vm: ScheduleViewModel by viewModels()
 
     override fun onCreateView(
