@@ -2,6 +2,7 @@ package app.opass.ccip.network
 
 import app.opass.ccip.model.Announcement
 import app.opass.ccip.model.Attendee
+import app.opass.ccip.model.RemoteUserSchedule
 import app.opass.ccip.util.JsonUtil
 import retrofit2.Call
 import retrofit2.Retrofit
@@ -41,6 +42,11 @@ class CCIPClient {
             fun announcement(
                 @Query("token") token: String?
             ): Call<List<Announcement>>
+
+            @GET("/schedule")
+            suspend fun userSchedule(
+                @Query("token") token: String
+            ): RemoteUserSchedule
         }
     }
 }
