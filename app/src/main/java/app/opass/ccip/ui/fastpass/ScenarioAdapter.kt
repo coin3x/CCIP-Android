@@ -19,13 +19,15 @@ import java.util.*
 
 class ScenarioAdapter(
     private val mContext: Context,
-    private val mScenarioList: MutableList<Scenario>,
+    initialScenarioList: List<Scenario>,
     private val onItemClick: (Scenario) -> Unit
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     companion object {
         private val SDF = SimpleDateFormat("MM/dd HH:mm")
         private const val FORMAT_TIMERANGE = "%s ~ %s"
     }
+
+    private val mScenarioList = initialScenarioList.toMutableList()
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         var scenarioIcon: ImageView = itemView.findViewById(R.id.icon)

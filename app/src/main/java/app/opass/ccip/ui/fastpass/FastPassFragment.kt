@@ -124,14 +124,14 @@ class FastPassFragment : Fragment(), CoroutineScope {
                 when {
                     response.isSuccessful -> {
                         val attendee = response.body()
-                        val attr = attendee!!.attr.asJsonObject
+                        val attr = attendee!!.attr?.asJsonObject
 
-                        attr.get("title")?.let {
+                        attr?.get("title")?.let {
                             mActivity.setUserTitle(it.asString)
                         }
                         mActivity.setUserId(attendee.userId)
 
-                        mAdapter = ScenarioAdapter(mActivity, attendee.scenarios) {
+                        mAdapter = ScenarioAdapter(mActivity, attendee.scenarios.orEmpty()) {
                             val isUsed = it.used != null
                             val hasCountdown = it.countdown > 0
 
@@ -184,7 +184,7 @@ class FastPassFragment : Fragment(), CoroutineScope {
                 when {
                     response.isSuccessful -> {
                         val attendee = response.body()
-                        mAdapter.setItems(attendee!!.scenarios)
+                        mAdapter.setItems(attendee!!.scenarios.orEmpty())
 
                         if (scenario.countdown > 0) {
                             startCountdownActivity(scenario)
